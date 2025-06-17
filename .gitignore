@@ -1,0 +1,62 @@
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+
+# ↑ 仮想環境のフォルダ名が `venv` や `.venv` の場合はこれ
+# Anacondaで `conda create -p venv` のようにした場合も `venv/` でOK
+
+env/
+venv.bak/
+ENV/
+
+# Flask specific
+instance/
+.webassets-cache
+
+# Sass
+.sass-cache/
+
+# mypy
+.mypy_cache/
+```
