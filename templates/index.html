@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>社内Wiki - トップページ</title>
+    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
+</head>
+<body>
+    <h1>社内Wikiへようこそ</h1>
+    <hr>
+    <h2>ページ一覧</h2>
+    <ul>
+        {% for page in pages %}
+            <li><a href="/page/{{ page['id'] }}">{{ page['title'] }}</a></li>
+        {% else %}
+            <li>まだページがありません。</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
