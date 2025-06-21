@@ -1,6 +1,7 @@
 import sqlite3
 import markdown
-from flask import Flask, render_template, g, abort
+# カンマ区切りで request を追加する
+from flask import Flask, render_template, g, abort, request, redirect, url_for, flash
 
 # --- アプリケーションの設定 ---
 DATABASE = 'wiki.db'
