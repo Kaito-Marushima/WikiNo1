@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>新規ページ作成 - 社内Wiki</title>
+    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
+</head>
+<body>
+    <h1>新規ページ作成</h1>
+
+    <form action="/new" method="post">
+        <div>
+            <label>タイトル</label>
+            <input type="text" name="title" size="30">
+        </div>
+        <div>
+            <label>本文</label>
+            <textarea name="content" rows="10" cols="40"></textarea>
+        </div>
+        <div>
+            <button type="submit">保存する</button>
+        </div>
+    </form>
+    <hr>
+    <a href="/">トップページに戻る</a>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ページ編集 - 社内Wiki</title>
+    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
+</head>
+<body>
+    <h1>ページ編集</h1>
+
+    <form action="/edit/{{ page['id'] }}" method="post">
+        <div>
+            <label>タイトル</label>
+            <input type="text" name="title" size="30" value="{{ page['title'] }}">
+        </div>
+        <div>
+            <label>本文 (Markdown対応)</label>
+            <textarea name="content" rows="10" cols="40">{{ page['content'] }}</textarea>
+        </div>
+        <div>
+            <button type="submit">更新する</button>
+        </div>
+    </form>
+
+    <hr>
+
+    <form action="/delete/{{ page['id'] }}" method="post" style="display: inline;">
+        <button type="submit" class="button-outline" onclick="return confirm('本当にこのページを削除しますか？元に戻せません。')">
+            このページを削除する
+        </button>
+    </form>
+
+    <a href="/">トップページに戻る</a>
+
+</body>
+</html>
