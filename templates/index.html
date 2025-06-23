@@ -8,6 +8,15 @@
 <body>
     <h1>社内Wikiへようこそ</h1>
 
+<nav>
+    {% if current_user.is_authenticated %}
+        <span>こんにちは, {{ current_user.username }} さん | </span>
+        <a href="{{ url_for('logout') }}">ログアウト</a>
+    {% else %}
+        <a href="{{ url_for('login') }}">ログイン</a>
+    {% endif %}
+</nav>
+<form action="/search" method="get">
 <form action="/search" method="get">
     <input type="search" name="q" placeholder="キーワードで検索...">
     <button type="submit">検索</button>

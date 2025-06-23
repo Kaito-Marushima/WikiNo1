@@ -8,3 +8,11 @@ CREATE TABLE pages (
     content TEXT NOT NULL,                -- 記事の本文
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP -- 作成日時
 );
+-- ... pagesテーブルの定義の後 ...
+
+-- ユーザー情報を保存するテーブル
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL
+);

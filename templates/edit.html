@@ -8,7 +8,16 @@
 <body>
     <h1>ページ編集</h1>
 
-    <form action="/edit/{{ page['id'] }}" method="post">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form action="/edit/{{ page['id'] }}" method="post" enctype="multipart/form-data">
+
         <div>
             <label>タイトル</label>
             <input type="text" name="title" size="30" value="{{ page['title'] }}">
@@ -18,11 +27,14 @@
             <textarea name="content" rows="10" cols="40">{{ page['content'] }}</textarea>
         </div>
         <div>
+            <label>添付ファイルを追加 (任意)</label>
+            <input type="file" name="upload_file">
+        </div>
+        <div>
             <button type="submit">更新する</button>
         </div>
-    </form>
 
-    <hr>
+    </form> <hr>
 
     <form action="/delete/{{ page['id'] }}" method="post" style="display: inline;">
         <button type="submit" class="button-outline" onclick="return confirm('本当にこのページを削除しますか？元に戻せません。')">
