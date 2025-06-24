@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    
+    <title>{% block title %}社内Wiki{% endblock %}</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
+</head>
+<body>
+    <header>
+        <h1><a href="{{ url_for('show_pages') }}">社内Wiki</a></h1>
+        <nav>
+            {% if current_user.is_authenticated %}
+                <span>こんにちは, {{ current_user.username }} さん | </span>
+                <a href="{{ url_for('add_page') }}">新規ページ作成</a> |
+                <a href="{{ url_for('logout') }}">ログアウト</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">ログイン</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <hr>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <hr>
+
+    <footer>
+        <p>&copy; 2025 Your Company Name</p>
+    </footer>
+
+</body>
+</html>

@@ -16,3 +16,20 @@ CREATE TABLE users (
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL
 );
+
+-- ... usersテーブルの定義の後 ...
+
+-- タグを保存するテーブル
+CREATE TABLE tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL
+);
+
+-- ページとタグの関連を保存する中間テーブル
+CREATE TABLE page_tags (
+    page_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    FOREIGN KEY (page_id) REFERENCES pages (id),
+    FOREIGN KEY (tag_id) REFERENCES tags (id),
+    PRIMARY KEY (page_id, tag_id)
+);

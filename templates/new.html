@@ -33,6 +33,10 @@
         <div>
             <button type="submit">保存する</button>
         </div>
+        <div>
+            <label>タグ (カンマ区切り)</label>
+            <input type="text" name="tags" size="50" value="{{ existing_tags | default('') }}">
+        </div>
 
     </form> 
 

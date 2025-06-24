@@ -31,6 +31,19 @@ cur.execute("INSERT INTO users (username, password) VALUES (?, ?)",
             ('admin', hashed_password)
             )
 
+# ... 初期ユーザーを追加するコードの後 ...
+
+# ↓↓↓ここから追記↓↓↓
+# 追記：テスト用のタグと関連データを追加
+cur.execute("INSERT INTO tags (name) VALUES (?)", ('議事録',))
+cur.execute("INSERT INTO tags (name) VALUES (?)", ('ノウハウ',))
+cur.execute("INSERT INTO tags (name) VALUES (?)", ('仕様書',))
+
+# ページ1（ホームページ）にタグ1（議事録）を紐付け
+cur.execute("INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)", (1, 1))
+# ページ2（使い方）にタグ2（ノウハウ）を紐付け
+cur.execute("INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)", (2, 2))
+# ↑↑↑ここまで追記↑↑↑
 # データベースへの変更を保存して、接続を閉じる
 connection.commit()
 connection.close()

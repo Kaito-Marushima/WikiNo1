@@ -1,36 +1,21 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>社内Wiki - トップページ</title>
-    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
-</head>
-<body>
-    <h1>社内Wikiへようこそ</h1>
+{% extends 'layout.html' %}
 
-<nav>
-    {% if current_user.is_authenticated %}
-        <span>こんにちは, {{ current_user.username }} さん | </span>
-        <a href="{{ url_for('logout') }}">ログアウト</a>
-    {% else %}
-        <a href="{{ url_for('login') }}">ログイン</a>
-    {% endif %}
-</nav>
-<form action="/search" method="get">
-<form action="/search" method="get">
-    <input type="search" name="q" placeholder="キーワードで検索...">
-    <button type="submit">検索</button>
-</form>
-<hr>
-<a href="/new">新規ページ作成</a>
+{% block title %}
+    トップページ - 社内Wiki
+{% endblock %}
+
+{% block content %}
+    <form action="{{ url_for('search') }}" method="get">
+        <input type="search" name="q" placeholder="キーワードで検索...">
+        <button type="submit">検索</button>
+    </form>
     <hr>
     <h2>ページ一覧</h2>
     <ul>
         {% for page in pages %}
-            <li><a href="/page/{{ page['id'] }}">{{ page['title'] }}</a></li>
+            <li><a href="{{ url_for('view_page', page_id=page['id']) }}">{{ page['title'] }}</a></li>
         {% else %}
             <li>まだページがありません。</li>
         {% endfor %}
     </ul>
-</body>
-</html>
+{% endblock %}

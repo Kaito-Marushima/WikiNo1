@@ -77,14 +77,29 @@ def show_pages():
 
 @app.route('/page/<int:page_id>')
 def view_page(page_id):
-    """個別ページ。指定されたIDのページを表示する。"""
     db = get_db()
-    cur = db.execute('SELECT title, content FROM pages WHERE id = ?', (page_id,))
+    cur = db.execute('SELECT id, title, content FROM pages WHERE id = ?', (page_id,))
     page = cur.fetchone()
     if page is None:
         abort(404)
-    content_html = markdown.markdown(page['content'])
-    return render_template('page.html', page=page, content_html=content_html)
+
+    # このページに紐づくタグを取得
+    cur = db.execute("""
+        SELECT t.name FROM tags t JOIN page_tags pt ON t.id = pt.tag_id
+        WHERE pt.page_id = ?
+    """, (page_id,))
+    tags = cur.fetchall()
+
+    extensions = [
+        'tables',        # 表を有効にする
+        'fenced_code',   # コードブロックをきれいに表示する
+        'nl2br',         # 改行をそのまま<br>タグに変換する
+        'sane_lists',    # 箇条書きの挙動をより直感的にする
+    ]
+    # markdown関数に、extensionsリストを渡す
+    content_html = markdown.markdown(page['content'], extensions=extensions)
+    # pageオブジェクト、変換後のHTML、タグのリストをテンプレートに渡す
+    return render_template('page.html', page=page, content_html=content_html, tags=tags)
 
 @app.route('/search')
 def search():
@@ -101,88 +116,115 @@ def search():
         results = cur.fetchall()
     return render_template('search_results.html', query=query, results=results)
 # app.py の中の add_page 関数を、以下の内容でまるごと置き換えてください
-
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
 def add_page():
+    """新規ページを作成し、タグも保存する"""
+    # POSTリクエスト（フォームが送信された）の場合
     if request.method == 'POST':
         title = request.form['title']
-        content = request.form['content'] # まずフォームから送られた本文を取得
-        upload_file = request.files['upload_file'] # アップロードされたファイルを取得
+        content = request.form['content']
+        tags_string = request.form['tags'] # タグ入力欄から文字列を取得
 
         # タイトルが空の場合はエラー
         if not title:
             flash('タイトルを入力してください。', 'error')
-            # new.htmlを再表示するが、入力内容はそのままにしておくと親切
-            return render_template('new.html', title=title, content=content)
-
-        # ファイルが選択されていれば、保存処理を行う
-        if upload_file and upload_file.filename != '':
-            # ファイル名を安全なものに変換（セキュリティ対策）
-            filename = secure_filename(upload_file.filename)
-            # ファイルの保存先パスを作成
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            # ファイルを保存
-            upload_file.save(file_path)
-            
-            # 本文(content)の末尾に、アップロードしたファイルへのMarkdownリンクを自動で追記
-            content += f"\n\n添付ファイル: [{filename}](/uploads/{filename})"
-            flash('ファイルがアップロードされ、リンクが本文に追加されました。', 'info')
+            # new.htmlを再表示。入力内容はそのままにしておくと親切
+            return render_template('new.html', title=title, content=content, existing_tags=tags_string)
 
         db = get_db()
-        # リンクが追記されたかもしれないcontentをデータベースに保存
-        db.execute(
+        
+        # --- ページの保存 ---
+        # まずページ本体を保存
+        cur = db.execute(
             'INSERT INTO pages (title, content) VALUES (?, ?)',
             (title, content)
         )
-        db.commit()
-        flash('新しいページが保存されました。', 'success')
+        # ★保存したばかりの新しいページのIDを取得する
+        new_page_id = cur.lastrowid
         
-        # 保存後、今作成したばかりのページに直接移動する
-        cur = db.execute('SELECT last_insert_rowid()')
-        new_page_id = cur.fetchone()[0]
+        # --- タグの保存処理 ---
+        # フォームから入力されたタグを処理
+        tag_names = [tag.strip() for tag in tags_string.split(',') if tag.strip()]
+        for name in tag_names:
+            # tagsテーブルに存在するか確認
+            cur = db.execute('SELECT id FROM tags WHERE name = ?', (name,))
+            tag = cur.fetchone()
+            if tag:
+                # 存在すればそのIDを使用
+                tag_id = tag['id']
+            else:
+                # なければtagsテーブルに新規追加し、そのIDを取得
+                cur = db.execute('INSERT INTO tags (name) VALUES (?)', (name,))
+                tag_id = cur.lastrowid
+            
+            # page_tagsテーブルに、新しいページIDとタグIDの関連を追加
+            db.execute('INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)', (new_page_id, tag_id))
+        
+        db.commit()
+        flash('新しいページがタグと共に保存されました。', 'success')
+        
+        # 保存後、今作成したばかりのページにリダイレクト
         return redirect(url_for('view_page', page_id=new_page_id))
             
-    # GETリクエストの場合は、空のフォームを表示
+    # GETリクエスト（通常アクセス）の場合は、空のフォームを表示
     return render_template('new.html')
-# app.py の中の edit_page 関数も、以下の内容でまるごと置き換えてください
 
 @app.route('/edit/<int:page_id>', methods=['GET', 'POST'])
 @login_required
 def edit_page(page_id):
     db = get_db()
+    # POST（更新）処理
+    if request.method == 'POST':
+        title = request.form['title']
+        content = request.form['content']
+        tags_string = request.form['tags']
+
+        # ... (タイトルや本文のバリデーションは省略) ...
+
+        # データベースを更新
+        db.execute('UPDATE pages SET title = ?, content = ? WHERE id = ?', (title, content, page_id))
+
+        # --- タグの更新処理 ---
+        # 1. このページに紐づく既存のタグ関連を一旦すべて削除
+        db.execute('DELETE FROM page_tags WHERE page_id = ?', (page_id,))
+
+        # 2. フォームから入力されたタグを処理
+        tag_names = [tag.strip() for tag in tags_string.split(',') if tag.strip()]
+        for name in tag_names:
+            # tagsテーブルに存在するか確認
+            cur = db.execute('SELECT id FROM tags WHERE name = ?', (name,))
+            tag = cur.fetchone()
+            if tag:
+                tag_id = tag['id']
+            else:
+                # なければtagsテーブルに新規追加
+                cur = db.execute('INSERT INTO tags (name) VALUES (?)', (name,))
+                tag_id = cur.lastrowid
+
+            # page_tagsテーブルに新しい関連を追加
+            db.execute('INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)', (page_id, tag_id))
+
+        db.commit()
+        flash('ページが更新されました。', 'success')
+        return redirect(url_for('view_page', page_id=page_id))
+
+    # GET（表示）処理
     cur = db.execute('SELECT id, title, content FROM pages WHERE id = ?', (page_id,))
     page = cur.fetchone()
     if page is None:
         abort(404)
-        
-    if request.method == 'POST':
-        title = request.form['title']
-        content = request.form['content'] # フォームから送られた本文を取得
-        upload_file = request.files['upload_file'] # アップロードされたファイルを取得
 
-        if not title:
-            flash('タイトルを入力してください。', 'error')
-            return render_template('edit.html', page=page)
+    # このページに紐づく既存のタグを取得
+    cur = db.execute("""
+        SELECT t.name FROM tags t JOIN page_tags pt ON t.id = pt.tag_id
+        WHERE pt.page_id = ?
+    """, (page_id,))
+    existing_tags_list = [row['name'] for row in cur.fetchall()]
+    existing_tags = ', '.join(existing_tags_list)
 
-        # ファイルが選択された場合の処理
-        if upload_file and upload_file.filename != '':
-            filename = secure_filename(upload_file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            upload_file.save(file_path)
-            # 本文(content)の末尾に、アップロードしたファイルへのMarkdownリンクを自動で追記
-            content += f"\n\n添付ファイル: [{filename}](/uploads/{filename})"
-            flash('ファイルがアップロードされ、リンクが本文に追加されました。', 'info')
-
-        # リンクが追記されたかもしれないcontentでデータベースを更新
-        db.execute(
-            'UPDATE pages SET title = ?, content = ? WHERE id = ?',
-            (title, content, page_id)
-        )
-        db.commit()
-        flash('ページが更新されました。', 'success')
-        return redirect(url_for('view_page', page_id=page_id))
-        
+    return render_template('edit.html', page=page, existing_tags=existing_tags)
+   
 @app.route('/delete/<int:page_id>', methods=['POST'])
 @login_required
 def delete_page(page_id):
@@ -234,6 +276,28 @@ def page_not_found(error):
 def uploaded_file(filename):
     """アップロードされたファイルを提供する"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/tag/<string:tag_name>')
+def show_pages_by_tag(tag_name):
+    """指定されたタグが付いたページを一覧表示する"""
+    db = get_db()
+
+    # タグ名からタグIDを取得
+    cur = db.execute('SELECT id FROM tags WHERE name = ?', (tag_name,))
+    tag = cur.fetchone()
+
+    if tag is None:
+        abort(404) # タグが存在しない場合は404
+
+    # タグIDに紐づくページの一覧を取得
+    cur = db.execute("""
+        SELECT p.id, p.title FROM pages p JOIN page_tags pt ON p.id = pt.page_id
+        WHERE pt.tag_id = ?
+    """, (tag['id'],))
+    pages = cur.fetchall()
+
+    # 検索結果表示用のテンプレートを再利用する
+    return render_template('search_results.html', query=f"タグ: {tag_name}", results=pages)
 
 # --- 実行ブロック ---
 if __name__ == '__main__':
