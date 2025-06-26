@@ -11,6 +11,12 @@
     <div>
     {{ content_html | safe }}
     </div>
+    <div style="font-size: 0.9em; color: grey;">
+    作成者: {{ page.author_name }}
+    {% if page.updater_name %}
+        | 最終更新者: {{ page.updater_name }}
+    {% endif %}
+    </div>
     <hr>
     <a href="/edit/{{ page['id'] }}">このページを編集する</a>
     <a href="/">トップページに戻る</a>

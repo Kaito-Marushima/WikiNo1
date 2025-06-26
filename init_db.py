@@ -10,14 +10,15 @@ with open('schema.sql', encoding='utf-8') as f:
 
 # データベースへの操作を行うためのカーソルを取得
 cur = connection.cursor()
+# init_db.pyのpagesテーブルへのINSERT文を修正
 
-# テストデータをデータベースに挿入する
-cur.execute("INSERT INTO pages (title, content) VALUES (?, ?)",
-            ('ホームページ', 'これはホームページの本文です。ようこそ！')
+# 著者ID(author_id)を追加。ここではadminユーザー(ID:1)が作成したことにする
+cur.execute("INSERT INTO pages (title, content, author_id) VALUES (?, ?, ?)",
+            ('ホームページ', 'これはホームページの本文です。ようこそ！', 1)
             )
 
-cur.execute("INSERT INTO pages (title, content) VALUES (?, ?)",
-            ('使い方', 'このWikiの使い方を説明します。\n1. 新規作成\n2. 編集\n3. 削除')
+cur.execute("INSERT INTO pages (title, content, author_id) VALUES (?, ?, ?)",
+            ('使い方', 'このWikiの使い方を説明します。\n1. 新規作成\n2. 編集\n3. 削除', 1)
             )
 
 # 初期ユーザーを追加する
