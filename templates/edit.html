@@ -1,52 +1,39 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>ページ編集 - 社内Wiki</title>
-    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
-</head>
-<body>
+{% extends 'layout.html' %}
+
+{% block title %}
+    「{{ page.title }}」を編集 - 社内Wiki
+{% endblock %}
+
+{% block content %}
     <h1>ページ編集</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <form action="/edit/{{ page['id'] }}" method="post" enctype="multipart/form-data">
-
+    <form action="{{ url_for('edit_page', page_id=page.id) }}" method="post" enctype="multipart/form-data">
         <div>
             <label>タイトル</label>
-            <input type="text" name="title" size="30" value="{{ page['title'] }}">
+            <input type="text" name="title" size="30" value="{{ page.title }}" required>
         </div>
         <div>
             <label>本文 (Markdown対応)</label>
-            <textarea name="content" rows="10" cols="40">{{ page['content'] }}</textarea>
+            <textarea name="content" rows="15" id="markdown-editor">{{ page.content }}</textarea>
         </div>
         <div>
             <label>添付ファイルを追加 (任意)</label>
             <input type="file" name="upload_file">
         </div>
         <div>
-            <button type="submit">更新する</button>
+            <label>タグ (カンマ区切り)</label>
+            <input type="text" name="tags" size="50" value="{{ existing_tags or '' }}">
         </div>
         <div>
-            <label>タグ (カンマ区切り)</label>
-            <input type="text" name="tags" size="50" value="{{ existing_tags | default('') }}">
+            <button type="submit">更新する</button>
         </div>
+    </form>
 
-    </form> <hr>
+    <hr>
 
-    <form action="/delete/{{ page['id'] }}" method="post" style="display: inline;">
+    <form action="{{ url_for('delete_page', page_id=page.id) }}" method="post" style="display: inline;">
         <button type="submit" class="button-outline" onclick="return confirm('本当にこのページを削除しますか？元に戻せません。')">
             このページを削除する
         </button>
     </form>
-
-    <a href="/">トップページに戻る</a>
-
-</body>
-</html>
+{% endblock %}

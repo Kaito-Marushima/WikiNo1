@@ -2,9 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    
     <title>{% block title %}社内Wiki{% endblock %}</title>
 
+    <link rel="stylesheet" href="{{ url_for('static', filename='easymde.min.css') }}">
+    
     <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
 </head>
 <body>
@@ -41,5 +42,17 @@
         <p>&copy; 2025 Your Company Name</p>
     </footer>
 
+    <script src="{{ url_for('static', filename='easymde.min.js') }}"></script>
+
+    <script>
+        const editorElement = document.getElementById("markdown-editor");
+        if (editorElement) {
+            const easyMDE = new EasyMDE({
+                element: editorElement,
+                spellChecker: false,
+                placeholder: "Markdown記法で入力できます...",
+            });
+        }
+    </script>
 </body>
 </html>

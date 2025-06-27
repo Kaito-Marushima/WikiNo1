@@ -14,7 +14,7 @@ lib64/
 parts/
 sdist/
 var/
-wheels/
+wheels/.\venv\Scripts\Activate.ps1p
 *.egg-info/
 .installed.cfg
 *.egg

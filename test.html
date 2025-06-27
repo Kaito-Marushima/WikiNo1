@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>EasyMDE 単体動作テスト</title>
+    <link rel="stylesheet" href="./static/easymde.min.css">
+</head>
+<body>
+    <h1>これは純粋なHTMLファイルです</h1>
+    <p>もしここにリッチなエディタが表示されれば、ライブラリのダウンロードとJavaScriptの基本動作は正常です。</p>
+
+    <textarea id="markdown-editor-test"></textarea>
+
+    <script src="./static/easymde.min.js"></script>
+
+    <script>
+        // このページ専用のIDでエディタを起動します
+        new EasyMDE({ element: document.getElementById("markdown-editor-test") });
+    </script>
+</body>
+</html>

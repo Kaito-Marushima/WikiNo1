@@ -1,46 +1,31 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>新規ページ作成 - 社内Wiki</title>
-    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
-</head>
-<body>
+{% extends 'layout.html' %}
+
+{% block title %}
+    新規ページ作成 - 社内Wiki
+{% endblock %}
+
+{% block content %}
     <h1>新規ページ作成</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <form action="/new" method="post" enctype="multipart/form-data">
-
+    <form action="{{ url_for('add_page') }}" method="post" enctype="multipart/form-data">
         <div>
             <label>タイトル</label>
-            <input type="text" name="title" size="30" required>
+            <input type="text" name="title" size="30" value="{{ title or '' }}" required>
         </div>
         <div>
             <label>本文 (Markdown対応)</label>
-            <textarea name="content" rows="10" cols="40"></textarea>
+            <textarea name="content" rows="15" id="markdown-editor">{{ content or '' }}</textarea>
         </div>
         <div>
             <label>添付ファイル (任意)</label>
             <input type="file" name="upload_file">
         </div>
         <div>
-            <button type="submit">保存する</button>
+            <label>タグ (カンマ区切り)</label>
+            <input type="text" name="tags" size="50" value="{{ existing_tags or '' }}">
         </div>
         <div>
-            <label>タグ (カンマ区切り)</label>
-            <input type="text" name="tags" size="50" value="{{ existing_tags | default('') }}">
+            <button type="submit">保存する</button>
         </div>
-
-    </form> 
-
-    <hr>
-    <a href="/">トップページに戻る</a>
-</body>
-</html>
+    </form>
+{% endblock %}
