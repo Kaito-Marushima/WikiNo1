@@ -5,35 +5,38 @@
 {% endblock %}
 
 {% block content %}
-    <h1>ページ編集</h1>
+    <div class="card">
+        <div class="card-header">
+            <h1>ページ編集</h1>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('edit_page', page_id=page.id) }}" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="title" class="form-label">タイトル</label>
+                    <input type="text" class="form-control" id="title" name="title" value="{{ page.title }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="markdown-editor" class="form-label">本文 (Markdown対応)</label>
+                    <textarea class="form-control" name="content" rows="15" id="markdown-editor">{{ page.content }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="tags" class="form-label">タグ (カンマ区切り)</label>
+                    <input type="text" class="form-control" id="tags" name="tags" value="{{ existing_tags or '' }}">
+                </div>
+                <div class="mb-3">
+                    <label for="upload_file" class="form-label">添付ファイルを追加 (任意)</label>
+                    <input class="form-control" type="file" id="upload_file" name="upload_file">
+                </div>
+                <button type="submit" class="btn btn-primary">更新する</button>
+            </form>
 
-    <form action="{{ url_for('edit_page', page_id=page.id) }}" method="post" enctype="multipart/form-data">
-        <div>
-            <label>タイトル</label>
-            <input type="text" name="title" size="30" value="{{ page.title }}" required>
-        </div>
-        <div>
-            <label>本文 (Markdown対応)</label>
-            <textarea name="content" rows="15" id="markdown-editor">{{ page.content }}</textarea>
-        </div>
-        <div>
-            <label>添付ファイルを追加 (任意)</label>
-            <input type="file" name="upload_file">
-        </div>
-        <div>
-            <label>タグ (カンマ区切り)</label>
-            <input type="text" name="tags" size="50" value="{{ existing_tags or '' }}">
-        </div>
-        <div>
-            <button type="submit">更新する</button>
-        </div>
-    </form>
+            <hr>
 
-    <hr>
-
-    <form action="{{ url_for('delete_page', page_id=page.id) }}" method="post" style="display: inline;">
-        <button type="submit" class="button-outline" onclick="return confirm('本当にこのページを削除しますか？元に戻せません。')">
-            このページを削除する
-        </button>
-    </form>
+            <form action="{{ url_for('delete_page', page_id=page.id) }}" method="post" style="display: inline;">
+                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('本当にこのページを削除しますか？元に戻せません。')">
+                    このページを削除する
+                </button>
+            </form>
+        </div>
+    </div>
 {% endblock %}

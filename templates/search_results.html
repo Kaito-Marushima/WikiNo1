@@ -5,14 +5,21 @@
 {% endblock %}
 
 {% block content %}
-    <h1>「{{ query }}」の検索結果</h1>
-    <p>{{ results | length }} 件見つかりました。</p>
+    <h1 class="mb-4">「{{ query }}」の検索結果</h1>
+    <p class="text-muted">{{ results | length }} 件見つかりました。</p>
     <hr>
-    <ul>
-        {% for page in results %}
-            <li><a href="{{ url_for('view_page', page_id=page['id']) }}">{{ page['title'] }}</a></li>
-        {% else %}
-            <li>該当するページは見つかりませんでした。</li>
-        {% endfor %}
-    </ul>
+    
+    {% if results %}
+        <div class="list-group">
+            {% for page in results %}
+                <a href="{{ url_for('view_page', page_id=page['id']) }}" class="list-group-item list-group-item-action">
+                    {{ page['title'] }}
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            該当するページは見つかりませんでした。
+        </div>
+    {% endif %}
 {% endblock %}

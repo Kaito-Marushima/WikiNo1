@@ -3,29 +3,31 @@
 {% block title %}
     新規ページ作成 - 社内Wiki
 {% endblock %}
-
 {% block content %}
-    <h1>新規ページ作成</h1>
-
-    <form action="{{ url_for('add_page') }}" method="post" enctype="multipart/form-data">
-        <div>
-            <label>タイトル</label>
-            <input type="text" name="title" size="30" value="{{ title or '' }}" required>
+    <div class="card">
+        <div class="card-header">
+            <h1>新規ページ作成</h1>
         </div>
-        <div>
-            <label>本文 (Markdown対応)</label>
-            <textarea name="content" rows="15" id="markdown-editor">{{ content or '' }}</textarea>
+        <div class="card-body">
+            <form action="{{ url_for('add_page') }}" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="title" class="form-label">タイトル</label>
+                    <input type="text" class="form-control" id="title" name="title" value="{{ title or '' }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="markdown-editor" class="form-label">本文 (Markdown対応)</label>
+                    <textarea class="form-control" name="content" rows="15" id="markdown-editor">{{ content or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="tags" class="form-label">タグ (カンマ区切り)</label>
+                    <input type="text" class="form-control" id="tags" name="tags" value="{{ existing_tags or '' }}">
+                </div>
+                <div class="mb-3">
+                    <label for="upload_file" class="form-label">添付ファイル (任意)</label>
+                    <input class="form-control" type="file" id="upload_file" name="upload_file">
+                </div>
+                <button type="submit" class="btn btn-primary">保存する</button>
+            </form>
         </div>
-        <div>
-            <label>添付ファイル (任意)</label>
-            <input type="file" name="upload_file">
-        </div>
-        <div>
-            <label>タグ (カンマ区切り)</label>
-            <input type="text" name="tags" size="50" value="{{ existing_tags or '' }}">
-        </div>
-        <div>
-            <button type="submit">保存する</button>
-        </div>
-    </form>
+    </div>
 {% endblock %}

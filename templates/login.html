@@ -1,32 +1,32 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>ログイン - 社内Wiki</title>
-    <link rel="stylesheet" href="https://unpkg.com/sakura.css/css/sakura.css" type="text/css">
-</head>
-<body>
-    <h1>ログイン</h1>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+{% extends 'layout.html' %}
 
-    <form method="post">
-        <div>
-            <label>ユーザー名</label>
-            <input type="text" name="username" required>
+{% block title %}
+    ログイン - 社内Wiki
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="text-center">ログイン</h1>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">ユーザー名</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">パスワード</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">ログイン</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <div>
-            <label>パスワード</label>
-            <input type="password" name="password" required>
-        </div>
-        <div>
-            <button type="submit">ログイン</button>
-        </div>
-    </form>
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}

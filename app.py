@@ -97,31 +97,58 @@ def view_page(page_id):
     extensions = ['tables', 'fenced_code', 'nl2br', 'sane_lists']
     content_html = markdown.markdown(page['content'], extensions=extensions)
     return render_template('page.html', page=page, content_html=content_html, tags=tags)
-
 @app.route('/search')
 def search():
-    """ページを横断検索する"""
-    query = request.args.get('q', '')
+    """ページを横断検索する（キーワード、著者、複数タグ対応）"""
+    query = request.args.get('q', '').strip()
     results = []
+    
     if query:
         db = get_db()
-        search_query = f'%{query}%'
-        cur = db.execute("""
-            SELECT DISTINCT p.id, p.title
-            FROM pages p
-            JOIN users author ON p.author_id = author.id
-            LEFT JOIN users updater ON p.updated_by_id = updater.id
-            LEFT JOIN page_tags pt ON p.id = pt.page_id
-            LEFT JOIN tags t ON pt.tag_id = t.id
-            WHERE p.title LIKE ? 
-               OR p.content LIKE ? 
-               OR author.username LIKE ? 
-               OR updater.username LIKE ?
-               OR t.name LIKE ?
-        """, (search_query, search_query, search_query, search_query, search_query))
-        results = cur.fetchall()
-    return render_template('search_results.html', query=query, results=results)
+        
+        # クエリをカンマやスペースで分割し、空の要素を取り除く
+        search_terms = [term.strip() for term in query.replace(',', ' ').split() if term.strip()]
+        
+        if search_terms:
+            # --- タグ検索ロジック ---
+            # 検索ワードがすべて存在するタグと仮定して検索を試みる
+            placeholders = ', '.join('?' for _ in search_terms)
+            sql_query = f"""
+                SELECT p.id, p.title
+                FROM pages p
+                JOIN page_tags pt ON p.id = pt.page_id
+                JOIN tags t ON pt.tag_id = t.id
+                WHERE t.name IN ({placeholders})
+                GROUP BY p.id, p.title
+                HAVING COUNT(DISTINCT t.name) = ?
+            """
+            
+            # 実行するクエリに渡す引数リスト
+            params = search_terms + [len(search_terms)]
+            
+            cur = db.execute(sql_query, params)
+            results = cur.fetchall()
 
+            # --- 全文検索ロジック (タグ検索でヒットしなかった場合) ---
+            if not results:
+                search_query = f'%{query}%'
+                cur = db.execute("""
+                    SELECT DISTINCT p.id, p.title
+                    FROM pages p
+                    JOIN users author ON p.author_id = author.id
+                    LEFT JOIN users updater ON p.updated_by_id = updater.id
+                    LEFT JOIN page_tags pt ON p.id = pt.page_id
+                    LEFT JOIN tags t ON pt.tag_id = t.id
+                    WHERE p.title LIKE ? 
+                       OR p.content LIKE ? 
+                       OR author.username LIKE ? 
+                       OR updater.username LIKE ?
+                       OR t.name LIKE ?
+                """, (search_query, search_query, search_query, search_query, search_query))
+                results = cur.fetchall()
+
+    return render_template('search_results.html', query=query, results=results)
+    
 @app.route('/tag/<string:tag_name>')
 def show_pages_by_tag(tag_name):
     """指定されたタグが付いたページを一覧表示する"""
@@ -142,28 +169,43 @@ def uploaded_file(filename):
     """アップロードされたファイルを提供する"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+# app.py の中の add_page 関数を、以下の内容で置き換えてください
+# app.py の中の add_page 関数を、以下の内容で置き換えてください
 
-# --- ルーティング（要ログイン） ---
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
 def add_page():
-    """新規ページを作成する"""
-    if request.method == 'POST':
-        title = request.form['title']
-        content = request.form['content']
-        tags_string = request.form['tags']
-        upload_file = request.files['upload_file']
+    # フォームの入力値を保持するために、POST時にも取得
+    title = request.form.get('title', '')
+    content = request.form.get('content', '')
+    tags_string = request.form.get('tags', '')
 
+    if request.method == 'POST':
+        upload_file = request.files.get('upload_file')
+
+        # --- ファイルがアップロードされた場合の処理 ---
+        if upload_file and upload_file.filename != '':
+            filename = secure_filename(upload_file.filename)
+            file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+            
+            upload_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+            # 画像かそれ以外かで、挿入するMarkdownを生成
+            if file_ext in app.config['ALLOWED_EXTENSIONS'] and file_ext in {'png', 'jpg', 'jpeg', 'gif'}:
+                markdown_to_insert = f"![{filename}](/uploads/{filename})"
+            else:
+                markdown_to_insert = f"[{filename}](/uploads/{filename})"
+            
+            # ページを保存せず、挿入用テキストをflashメッセージでユーザーに提示
+            flash(f"ファイルがアップロードされました。本文に挿入するには、次のテキストをコピーしてください: `{markdown_to_insert}`", 'info')
+            
+            # 入力中の内容を保持したまま、同じフォームを再表示
+            return render_template('new.html', title=title, content=content, existing_tags=tags_string)
+
+        # --- ファイルアップロードがない場合（通常の保存処理） ---
         if not title:
             flash('タイトルを入力してください。', 'error')
             return render_template('new.html', title=title, content=content, existing_tags=tags_string)
-
-        if upload_file and upload_file.filename != '':
-            filename = secure_filename(upload_file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            upload_file.save(file_path)
-            content += f"\n\n添付ファイル: [{filename}](/uploads/{filename})"
-            flash('ファイルがアップロードされ、リンクが本文に追加されました。', 'info')
 
         db = get_db()
         cur = db.execute(
@@ -172,6 +214,7 @@ def add_page():
         )
         new_page_id = cur.lastrowid
         
+        # (タグの保存処理)
         tag_names = [tag.strip() for tag in tags_string.split(',') if tag.strip()]
         for name in tag_names:
             cur = db.execute('SELECT id FROM tags WHERE name = ?', (name,))
@@ -187,34 +230,53 @@ def add_page():
         flash('新しいページがタグと共に保存されました。', 'success')
         return redirect(url_for('view_page', page_id=new_page_id))
             
+    # GETリクエストの場合は、空のフォームを表示
     return render_template('new.html')
+
+    # app.py の中の edit_page 関数も、以下の内容で置き換えてください
 
 @app.route('/edit/<int:page_id>', methods=['GET', 'POST'])
 @login_required
 def edit_page(page_id):
-    """既存のページを編集する"""
     db = get_db()
+    
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
         tags_string = request.form['tags']
-        upload_file = request.files['upload_file']
+        upload_file = request.files.get('upload_file')
+        
+        # --- ファイルがアップロードされた場合の処理 ---
+        if upload_file and upload_file.filename != '':
+            filename = secure_filename(upload_file.filename)
+            file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
 
+            upload_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+            if file_ext in app.config['ALLOWED_EXTENSIONS'] and file_ext in {'png', 'jpg', 'jpeg', 'gif'}:
+                markdown_to_insert = f"![{filename}](/uploads/{filename})"
+            else:
+                markdown_to_insert = f"[{filename}](/uploads/{filename})"
+
+            flash(f"ファイルがアップロードされました。本文に挿入するには、次のテキストをコピーしてください: `{markdown_to_insert}`", 'info')
+            
+            # 入力中の内容を保持したまま、同じ編集フォームを再表示
+            page_data_for_template = {'id': page_id, 'title': title, 'content': content}
+            return render_template('edit.html', page=page_data_for_template, existing_tags=tags_string)
+
+        # --- ファイルアップロードがない場合（通常の更新処理） ---
         if not title:
             flash('タイトルを入力してください。', 'error')
             cur = db.execute('SELECT id, title, content FROM pages WHERE id = ?', (page_id,))
             page = cur.fetchone()
             return render_template('edit.html', page=page, existing_tags=tags_string)
 
-        if upload_file and upload_file.filename != '':
-            filename = secure_filename(upload_file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            upload_file.save(file_path)
-            content += f"\n\n添付ファイル: [{filename}](/uploads/{filename})"
-            flash('ファイルがアップロードされ、リンクが本文に追加されました。', 'info')
+        db.execute(
+            'UPDATE pages SET title = ?, content = ?, updated_by_id = ? WHERE id = ?',
+            (title, content, current_user.id, page_id)
+        )
 
-        db.execute('UPDATE pages SET title = ?, content = ?, updated_by_id = ? WHERE id = ?', (title, content, current_user.id, page_id))
-        
+        # (タグの更新処理)
         db.execute('DELETE FROM page_tags WHERE page_id = ?', (page_id,))
         tag_names = [tag.strip() for tag in tags_string.split(',') if tag.strip()]
         for name in tag_names:
@@ -230,7 +292,8 @@ def edit_page(page_id):
         db.commit()
         flash('ページが更新されました。', 'success')
         return redirect(url_for('view_page', page_id=page_id))
-
+            
+    # GETリクエストの場合
     cur = db.execute('SELECT id, title, content FROM pages WHERE id = ?', (page_id,))
     page = cur.fetchone()
     if page is None:
