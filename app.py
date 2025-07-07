@@ -53,29 +53,33 @@ def get_page_tags(page_id):
     db = get_db()
     cur = db.execute("SELECT t.name FROM tags t JOIN page_tags pt ON t.id = pt.tag_id WHERE pt.page_id = ?", (page_id,))
     return {row['name'] for row in cur.fetchall()}
+
+def check_permission(page_permission_level, action='view'):
+    """ユーザーが特定の権限レベルのページに対してアクションを実行できるかチェックする"""
+    # 役職の階層を定義（数字が小さいほど偉い）
+    role_hierarchy = {'Admin': 0, 'Member': 1, 'Intern': 2, 'Customer': 3}
     
-def check_permission(page_tags, action='view'):
-    """ユーザーが特定のページに対してアクション（閲覧/編集）を実行できるかチェックする"""
+    # ページの権限レベルを定義
+    permission_map = {
+        '管理者のみ': 0,
+        '社員以上': 1,
+        'インターン生以上': 2,
+        '全員に公開': 4 # ログインしていない人も含めて全員
+    }
+
+    # ページの権限レベルを取得
+    required_level = permission_map.get(page_permission_level, 0) # 不明な場合は最も厳しい「管理者のみ」
+
     # ログインしていない場合
     if not current_user.is_authenticated:
-        return '社外公開可' in page_tags
+        return required_level == 4 # 「全員に公開」のページのみ許可
+
+    # ログインしている場合
+    user_level = role_hierarchy.get(current_user.role, 4) # 不明な役職は最も権限が低い
     
-    # ログインしているユーザーの役職を取得
-    user_role = current_user.role
-    
-    # ★★★ 役職名を日本語から英語に修正 ★★★
-    if user_role == 'Admin':
-        return True
-    if user_role == 'Customer': # 「外部」を「Customer」に変更
-        return '社外公開可' in page_tags
-    if user_role == 'Intern':   # 「インターン生」を「Intern」に変更
-        return '本業務' not in page_tags
-    if user_role == 'Member':   # 「社員」を「Member」に変更
-        if action == 'edit':
-            return 'インターン' not in page_tags
-        return True # 社員は閲覧は基本的にすべて許可
-    
-    return False
+    # ユーザーの役職レベルが、要求されるレベル以上（数字が同じか小さい）かチェック
+    return user_level <= required_level
+
 class User(UserMixin):
     def __init__(self, id, username, password, role): # ★roleを追加
         self.id = id
@@ -102,12 +106,13 @@ def show_pages():
     pages = cur.fetchall()
     return render_template('index.html', pages=pages)
 @app.route('/page/<int:page_id>')
+@app.route('/page/<int:page_id>')
 def view_page(page_id):
-    """個別ページ。権限をチェックし、指定されたIDのページを表示する。"""
+    """個別ページ。新しい権限レベルに基づいて閲覧可能かチェックする。"""
     db = get_db()
-    # ページ情報を取得（著者名なども一緒に取得）
+    # permission_levelも取得するようにSQLを修正
     cur = db.execute("""
-        SELECT p.id, p.title, p.content, author.username as author_name, updater.username as updater_name
+        SELECT p.*, author.username as author_name, updater.username as updater_name
         FROM pages p
         JOIN users author ON p.author_id = author.id
         LEFT JOIN users updater ON p.updated_by_id = updater.id
@@ -118,20 +123,19 @@ def view_page(page_id):
     if page is None:
         abort(404)
 
-    # --- 権限チェック ---
+    # --- 新しい権限チェック ---
+    # ページの権限レベルを引数として渡す
+    if not check_permission(page['permission_level'], action='view'):
+        abort(403) # 閲覧権限がなければ403エラー
+
+    # タグを取得する
     page_tags = get_page_tags(page_id)
-    if not check_permission(page_tags, action='view'):
-        abort(403) # 閲覧権限がなければ403エラーを返す
-    # --- 権限チェックここまで ---
 
     # MarkdownをHTMLに変換
     extensions = ['tables', 'fenced_code', 'nl2br', 'sane_lists']
     content_html = markdown.markdown(page['content'], extensions=extensions)
     
-    # テンプレートに渡すために、タグのセットをリストに変換
-    tags_list = list(page_tags)
-
-    return render_template('page.html', page=page, content_html=content_html, tags=tags_list)
+    return render_template('page.html', page=page, content_html=content_html, tags=list(page_tags))
 
 @app.route('/search')
 def search():
@@ -205,48 +209,27 @@ def uploaded_file(filename):
     """アップロードされたファイルを提供する"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# app.py の中の add_page 関数を、以下の内容で置き換えてください
-# app.py の中の add_page 関数を、以下の内容で置き換えてください
-
 @app.route('/new', methods=['GET', 'POST'])
 @login_required
 def add_page():
-    # フォームの入力値を保持するために、POST時にも取得
-    title = request.form.get('title', '')
-    content = request.form.get('content', '')
-    tags_string = request.form.get('tags', '')
-
+    """新規ページを作成し、権限レベルも保存する"""
     if request.method == 'POST':
-        upload_file = request.files.get('upload_file')
+        title = request.form['title']
+        content = request.form['content']
+        tags_string = request.form['tags']
+        permission_level = request.form['permission_level'] # ★フォームから権限レベルを取得
 
-        # --- ファイルがアップロードされた場合の処理 ---
-        if upload_file and upload_file.filename != '':
-            filename = secure_filename(upload_file.filename)
-            file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-            
-            upload_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-            # 画像かそれ以外かで、挿入するMarkdownを生成
-            if file_ext in app.config['ALLOWED_EXTENSIONS'] and file_ext in {'png', 'jpg', 'jpeg', 'gif'}:
-                markdown_to_insert = f"![{filename}](/uploads/{filename})"
-            else:
-                markdown_to_insert = f"[{filename}](/uploads/{filename})"
-            
-            # ページを保存せず、挿入用テキストをflashメッセージでユーザーに提示
-            flash(f"ファイルがアップロードされました。本文に挿入するには、次のテキストをコピーしてください: `{markdown_to_insert}`", 'info')
-            
-            # 入力中の内容を保持したまま、同じフォームを再表示
-            return render_template('new.html', title=title, content=content, existing_tags=tags_string)
-
-        # --- ファイルアップロードがない場合（通常の保存処理） ---
         if not title:
             flash('タイトルを入力してください。', 'error')
             return render_template('new.html', title=title, content=content, existing_tags=tags_string)
 
+        # (ファイルアップロードのロジックは省略しています)
+
         db = get_db()
+        # ★permission_levelも一緒に保存
         cur = db.execute(
-            'INSERT INTO pages (title, content, author_id) VALUES (?, ?, ?)',
-            (title, content, current_user.id)
+            'INSERT INTO pages (title, content, author_id, permission_level) VALUES (?, ?, ?, ?)',
+            (title, content, current_user.id, permission_level)
         )
         new_page_id = cur.lastrowid
         
@@ -263,47 +246,42 @@ def add_page():
             db.execute('INSERT INTO page_tags (page_id, tag_id) VALUES (?, ?)', (new_page_id, tag_id))
         
         db.commit()
-        flash('新しいページがタグと共に保存されました。', 'success')
+        flash('新しいページが保存されました。', 'success')
         return redirect(url_for('view_page', page_id=new_page_id))
             
-    # GETリクエストの場合は、空のフォームを表示
     return render_template('new.html')
 
 @app.route('/edit/<int:page_id>', methods=['GET', 'POST'])
 @login_required
 def edit_page(page_id):
-    """既存のページを編集する。最初に編集権限をチェックする。"""
-    # --- 権限チェック ---
-    page_tags = get_page_tags(page_id)
-    if not check_permission(page_tags, action='edit'):
-        abort(403) # 編集権限がなければ403エラーを返す
-    # --- 権限チェックここまで ---
-
+    """既存のページを編集する。最初に権限レベルで編集可能かチェックする。"""
     db = get_db()
-    
+    cur = db.execute('SELECT * FROM pages WHERE id = ?', (page_id,))
+    page = cur.fetchone()
+
+    if page is None:
+        abort(404)
+
+    # --- 新しい権限チェック ---
+    if not check_permission(page['permission_level'], action='edit'):
+        abort(403)
+
     # POSTリクエスト（フォームが更新された）の場合
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
         tags_string = request.form['tags']
-        upload_file = request.files.get('upload_file')
-
-        if not title:
-            flash('タイトルを入力してください。', 'error')
-            # エラー時もページ情報を再取得して編集画面に戻る
-            cur = db.execute('SELECT id, title, content FROM pages WHERE id = ?', (page_id,))
-            page = cur.fetchone()
-            return render_template('edit.html', page=page, existing_tags=tags_string)
-
-        # (ファイルアップロード処理は省略)
-
-        # ページの更新
-        db.execute(
-            'UPDATE pages SET title = ?, content = ?, updated_by_id = ? WHERE id = ?',
-            (title, content, current_user.id, page_id)
-        )
+        permission_level = request.form['permission_level'] # ★フォームから権限レベルを取得
         
-        # タグの更新
+        # (ファイルアップロードのロジックは省略しています)
+
+        # ★permission_levelも一緒に更新
+        db.execute(
+            'UPDATE pages SET title = ?, content = ?, updated_by_id = ?, permission_level = ? WHERE id = ?',
+            (title, content, current_user.id, permission_level, page_id)
+        )
+
+        # (タグの更新処理)
         db.execute('DELETE FROM page_tags WHERE page_id = ?', (page_id,))
         tag_names = [tag.strip() for tag in tags_string.split(',') if tag.strip()]
         for name in tag_names:
@@ -321,14 +299,8 @@ def edit_page(page_id):
         return redirect(url_for('view_page', page_id=page_id))
             
     # GETリクエスト（編集ページを最初に表示する）の場合
-    cur = db.execute('SELECT id, title, content FROM pages WHERE id = ?', (page_id,))
-    page = cur.fetchone()
-    if page is None:
-        abort(404)
-    
-    # 既存のタグをカンマ区切りの文字列として取得
-    existing_tags_list = [row['name'] for row in get_page_tags(page_id)]
-    existing_tags = ', '.join(existing_tags_list)
+    page_tags = get_page_tags(page_id)
+    existing_tags = ', '.join(sorted(list(page_tags)))
     
     return render_template('edit.html', page=page, existing_tags=existing_tags)
 

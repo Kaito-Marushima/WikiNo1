@@ -21,8 +21,7 @@ CREATE TABLE tags (
     name TEXT UNIQUE NOT NULL
 );
 
-
--- ページ本体を保存するテーブル
+-- pagesテーブルの定義を変更
 CREATE TABLE pages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT UNIQUE NOT NULL,
@@ -30,12 +29,10 @@ CREATE TABLE pages (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     author_id INTEGER NOT NULL,
     updated_by_id INTEGER,
-    -- 外部キー制約：author_idはusersテーブルのidを参照する
+    permission_level TEXT NOT NULL DEFAULT '社員以上', -- ★これを追加
     FOREIGN KEY (author_id) REFERENCES users (id),
-    -- 外部キー制約：updated_by_idはusersテーブルのidを参照する
     FOREIGN KEY (updated_by_id) REFERENCES users (id)
 );
-
 
 -- ページとタグの関連を保存する中間テーブル
 CREATE TABLE page_tags (

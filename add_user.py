@@ -7,7 +7,7 @@ bcrypt = Bcrypt()
 # 引数が4つ（ファイル名, ユーザー名, パスワード, 役職）あるかチェック
 if len(sys.argv) != 4:
     print("使い方: python add_user.py <ユーザー名> <パスワード> <役職>")
-    print("役職は '管理者', '社員', 'インターン生', '外部' のいずれかを指定してください。")
+    print("役職は 'Admin', 'Member', 'Intern', 'Customer' のいずれかを指定してください。")
     sys.exit(1)
 
 username = sys.argv[1]

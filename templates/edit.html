@@ -24,6 +24,15 @@
                     <input type="text" class="form-control" id="tags" name="tags" value="{{ existing_tags or '' }}">
                 </div>
                 <div class="mb-3">
+                    <label for="permission" class="form-label">閲覧・編集権限</label>
+                    <select class="form-select" id="permission" name="permission_level">
+                        <option value="管理者のみ" {% if page and page.permission_level == '管理者のみ' %}selected{% endif %}>管理者のみ</option>
+                        <option value="社員以上" {% if page and page.permission_level == '社員以上' %}selected{% endif %}>社員以上</option>
+                        <option value="インターン生以上" {% if page and page.permission_level == 'インターン生以上' %}selected{% endif %}>インターン生以上</option>
+                        <option value="全員に公開" {% if page and page.permission_level == '全員に公開' %}selected{% endif %}>全員に公開 (社外含む)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label for="upload_file" class="form-label">添付ファイルを追加 (任意)</label>
                     <input class="form-control" type="file" id="upload_file" name="upload_file">
                 </div>
