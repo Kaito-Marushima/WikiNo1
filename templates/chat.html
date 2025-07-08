@@ -1,0 +1,88 @@
+{% extends 'layout.html' %}
+
+{% block title %}
+    チャットBot - Uloqo Wiki
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <div class="card-header">
+            <h3>AIアシスタント</h3>
+        </div>
+
+        <div id="chat-window" class="card-body bg-light" style="height: 60vh; overflow-y: scroll;">
+            <div class="d-flex flex-row justify-content-start mb-4">
+                <div class="p-3 ms-3" style="border-radius: 15px; background-color: #f5f6f7;">
+                    <p class="small mb-0">こんにちは！何かお手伝いできることはありますか？</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer text-muted d-flex justify-content-start align-items-center p-3">
+            <textarea class="form-control" id="user-input" rows="1" placeholder="メッセージを入力..."></textarea>
+            <button class="btn btn-primary ms-3" id="send-button">送信</button>
+        </div>
+    </div>
+
+        <script>
+        // HTMLの要素を取得
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+
+        // メッセージを送信する関数
+        function sendMessage() {
+            const userText = userInput.value.trim(); // 入力されたテキストを取得
+
+            // 入力が空の場合は何もしない
+            if (userText === '') {
+                return;
+            }
+
+            // ユーザーのメッセージを右側に表示
+            const userMessageHtml = `
+                <div class="d-flex flex-row justify-content-end mb-4">
+                    <div class="p-3 me-3 border" style="border-radius: 15px; background-color: #e3f2fd;">
+                        <p class="small mb-0">${userText}</p>
+                    </div>
+                </div>
+            `;
+            chatWindow.innerHTML += userMessageHtml;
+
+            // ボットの応答を左側に表示
+            // 今回はAIではなく、固定のメッセージを返す
+            const botText = `「${userText}」についてですね。少々お待ちください。`;
+            const botMessageHtml = `
+                <div class="d-flex flex-row justify-content-start mb-4">
+                    <div class="p-3 ms-3" style="border-radius: 15px; background-color: #f5f6f7;">
+                        <p class="small mb-0">${botText}</p>
+                    </div>
+                </div>
+            `;
+            
+            // 少し遅れてボットのメッセージを表示（応答しているように見せるため）
+            setTimeout(() => {
+                chatWindow.innerHTML += botMessageHtml;
+                // 新しいメッセージが表示されるように、下にスクロール
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }, 500); // 0.5秒後
+
+            // 入力欄を空にする
+            userInput.value = '';
+            // 新しいメッセージが表示されるように、下にスクロール
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // 「送信」ボタンがクリックされたらsendMessage関数を呼ぶ
+        sendButton.addEventListener('click', sendMessage);
+
+        // 入力欄でEnterキーが押されたらsendMessage関数を呼ぶ
+        userInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // フォームのデフォルト送信をキャンセル
+                sendMessage();
+            }
+        });
+    </script>
+
+{% endblock %}

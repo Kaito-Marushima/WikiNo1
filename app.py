@@ -350,6 +350,12 @@ def logout():
     flash('ログアウトしました。', 'info')
     return redirect(url_for('show_pages'))
 
+@app.route('/chat')
+@login_required
+def chat():
+    """チャットBotページを表示する"""
+    return render_template('chat.html')
+
 
 # --- エラーハンドリング ---
 @app.errorhandler(404)
