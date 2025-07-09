@@ -21,7 +21,6 @@ CREATE TABLE tags (
     name TEXT UNIQUE NOT NULL
 );
 
--- pagesテーブルの定義を変更
 CREATE TABLE pages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT UNIQUE NOT NULL,
@@ -29,7 +28,8 @@ CREATE TABLE pages (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     author_id INTEGER NOT NULL,
     updated_by_id INTEGER,
-    permission_level TEXT NOT NULL DEFAULT '社員以上', -- ★これを追加
+    permission_level TEXT NOT NULL DEFAULT '社員以上',
+    vectorized_at TIMESTAMP, -- ★これを追加。最初はNULL
     FOREIGN KEY (author_id) REFERENCES users (id),
     FOREIGN KEY (updated_by_id) REFERENCES users (id)
 );

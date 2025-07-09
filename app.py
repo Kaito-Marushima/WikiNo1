@@ -1,3 +1,7 @@
+import faiss
+import pickle
+import numpy as np
+from sentence_transformers import SentenceTransformer
 import os
 import sqlite3
 import markdown
@@ -5,6 +9,22 @@ from werkzeug.utils import secure_filename
 from flask import Flask, render_template, g, abort, request, redirect, url_for, flash, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
+import openai
+
+print("AIモデルとベクトルDBを読み込み中...")
+try:
+    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    faiss_index = faiss.read_index('wiki_faiss.index')
+    with open('chunks.pkl', 'rb') as f:
+        chunk_data = pickle.load(f)
+    print("読み込み完了。")
+except FileNotFoundError:
+    print("エラー: ベクトルデータベースが見つかりません。")
+    print("先に `python create_vector_store.py` を実行してください。")
+    embedding_model = None
+    faiss_index = None
+    chunk_data = None
+
 
 # --- アプリケーションの設定 ---
 DATABASE = 'wiki.db'
@@ -105,7 +125,7 @@ def show_pages():
     cur = db.execute('SELECT id, title FROM pages ORDER BY id DESC')
     pages = cur.fetchall()
     return render_template('index.html', pages=pages)
-@app.route('/page/<int:page_id>')
+
 @app.route('/page/<int:page_id>')
 def view_page(page_id):
     """個別ページ。新しい権限レベルに基づいて閲覧可能かチェックする。"""
@@ -356,7 +376,52 @@ def chat():
     """チャットBotページを表示する"""
     return render_template('chat.html')
 
+from flask import Flask, render_template, g, abort, request, redirect, url_for, flash, send_from_directory, jsonify
 
+@app.route('/ask', methods=['POST'])
+@login_required
+def ask():
+    """RAGのベクトル検索を使って質問に回答するAPI"""
+    user_message = request.json.get('message')
+    if not user_message:
+        return jsonify({'error': 'メッセージが空です。'}), 400
+
+    if faiss_index is None:
+        return jsonify({'response': "エラー: ベクトルデータベースが読み込まれていません。"})
+
+    # --- 1. ベクトル検索 (Retrieval) ---
+    # ユーザーの質問をベクトルに変換
+    query_embedding = embedding_model.encode([user_message])
+    
+    # FAISSで類似度が高いチャンクを検索 (上位3件)
+    D, I = faiss_index.search(np.array(query_embedding, dtype=np.float32), 3)
+
+    # 検索結果のチャンクをコンテキストとして結合
+    context_list = [f"【記事タイトル】{chunk_data['references'][i]['title']}\n【内容】\n{chunk_data['chunks'][i]}" for i in I[0]]
+    context = "\n\n---\n\n".join(context_list)
+    
+    # (以降のプロンプト作成とLLMへの送信部分は変更なし)
+    try:
+        prompt = f"""
+        あなたは優秀な社内アシスタントです。以下の社内Wikiの情報だけを使って、ユーザーからの質問に日本語で回答してください。
+        情報が見つからない場合は、「関連情報が見つかりませんでした」と正直に答えてください。
+
+        --- 参考情報 ---
+        {context}
+        ---
+
+        質問: {user_message}
+        回答:
+        """
+        # (デモ用にプロンプトを返す部分はそのまま)
+        bot_response = f"【AIへのプロンプト（デモ）】\n{prompt}"
+
+    except Exception as e:
+        print(f"Error: {e}")
+        bot_response = "AIとの通信中にエラーが発生しました。"
+
+    return jsonify({'response': bot_response})
+    
 # --- エラーハンドリング ---
 @app.errorhandler(404)
 def page_not_found(error):

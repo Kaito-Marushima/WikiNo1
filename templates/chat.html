@@ -23,66 +23,77 @@
             <button class="btn btn-primary ms-3" id="send-button">送信</button>
         </div>
     </div>
+<script>
+    const chatWindow = document.getElementById('chat-window');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
 
-        <script>
-        // HTMLの要素を取得
-        const chatWindow = document.getElementById('chat-window');
-        const userInput = document.getElementById('user-input');
-        const sendButton = document.getElementById('send-button');
+    // メッセージを送信する非同期関数に変更
+    async function sendMessage() {
+        const userText = userInput.value.trim();
+        if (userText === '') return;
 
-        // メッセージを送信する関数
-        function sendMessage() {
-            const userText = userInput.value.trim(); // 入力されたテキストを取得
+        // ユーザーのメッセージを画面に追加
+        appendMessage(userText, 'user');
+        userInput.value = ''; // 入力欄を先にクリア
 
-            // 入力が空の場合は何もしない
-            if (userText === '') {
-                return;
+        try {
+            // ★サーバーの/askエンドポイントにリクエストを送信
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: userText })
+            });
+
+            if (!response.ok) {
+                throw new Error('サーバーからの応答がありません。');
             }
 
-            // ユーザーのメッセージを右側に表示
-            const userMessageHtml = `
+            const data = await response.json();
+            const botText = data.response;
+
+            // ★サーバーから返ってきた応答を画面に追加
+            appendMessage(botText, 'bot');
+
+        } catch (error) {
+            appendMessage('エラーが発生しました。しばらくしてからもう一度お試しください。', 'bot');
+            console.error('Error:', error);
+        }
+    }
+    
+    // メッセージを画面に追加するためのヘルパー関数
+    function appendMessage(text, sender) {
+        let messageHtml;
+        if (sender === 'user') {
+            messageHtml = `
                 <div class="d-flex flex-row justify-content-end mb-4">
                     <div class="p-3 me-3 border" style="border-radius: 15px; background-color: #e3f2fd;">
-                        <p class="small mb-0">${userText}</p>
+                        <p class="small mb-0">${text}</p>
                     </div>
                 </div>
             `;
-            chatWindow.innerHTML += userMessageHtml;
-
-            // ボットの応答を左側に表示
-            // 今回はAIではなく、固定のメッセージを返す
-            const botText = `「${userText}」についてですね。少々お待ちください。`;
-            const botMessageHtml = `
+        } else {
+            messageHtml = `
                 <div class="d-flex flex-row justify-content-start mb-4">
                     <div class="p-3 ms-3" style="border-radius: 15px; background-color: #f5f6f7;">
-                        <p class="small mb-0">${botText}</p>
+                        <p class="small mb-0">${text}</p>
                     </div>
                 </div>
             `;
-            
-            // 少し遅れてボットのメッセージを表示（応答しているように見せるため）
-            setTimeout(() => {
-                chatWindow.innerHTML += botMessageHtml;
-                // 新しいメッセージが表示されるように、下にスクロール
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            }, 500); // 0.5秒後
-
-            // 入力欄を空にする
-            userInput.value = '';
-            // 新しいメッセージが表示されるように、下にスクロール
-            chatWindow.scrollTop = chatWindow.scrollHeight;
         }
+        chatWindow.innerHTML += messageHtml;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
 
-        // 「送信」ボタンがクリックされたらsendMessage関数を呼ぶ
-        sendButton.addEventListener('click', sendMessage);
-
-        // 入力欄でEnterキーが押されたらsendMessage関数を呼ぶ
-        userInput.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // フォームのデフォルト送信をキャンセル
-                sendMessage();
-            }
-        });
-    </script>
+    sendButton.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+</script>
 
 {% endblock %}
