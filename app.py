@@ -120,12 +120,20 @@ def load_user(user_id):
 # --- ルーティング（公開ページ） ---
 @app.route('/')
 def show_pages():
-    """トップページ。全ページのタイトルを一覧表示する。"""
+    """トップページ。全タグ一覧と全ページ一覧を表示する。"""
     db = get_db()
-    cur = db.execute('SELECT id, title FROM pages ORDER BY id DESC')
-    pages = cur.fetchall()
-    return render_template('index.html', pages=pages)
-
+    
+    # 既存のロジック：全ページを取得
+    cur_pages = db.execute('SELECT id, title FROM pages ORDER BY id DESC')
+    pages = cur_pages.fetchall()
+    
+    # ★追加ロジック：全タグをアルファベット順で取得
+    cur_tags = db.execute('SELECT name FROM tags ORDER BY name')
+    tags = cur_tags.fetchall()
+    
+    # ★ページ一覧とタグ一覧の両方をテンプレートに渡す
+    return render_template('index.html', pages=pages, tags=tags)
+    
 @app.route('/page/<int:page_id>')
 def view_page(page_id):
     """個別ページ。新しい権限レベルに基づいて閲覧可能かチェックする。"""
@@ -421,7 +429,7 @@ def ask():
         bot_response = "AIとの通信中にエラーが発生しました。"
 
     return jsonify({'response': bot_response})
-    
+
 # --- エラーハンドリング ---
 @app.errorhandler(404)
 def page_not_found(error):
